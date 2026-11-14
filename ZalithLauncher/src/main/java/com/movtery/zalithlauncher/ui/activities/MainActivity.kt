@@ -33,7 +33,6 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.lifecycleScope
 import androidx.lifecycle.repeatOnLifecycle
 import com.movtery.guide.GuideHost
-import com.movtery.petlib.PetGazeRouter
 import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import com.movtery.zalithlauncher.R
 import com.movtery.zalithlauncher.context.COPY_LABEL_LINK
@@ -88,13 +87,7 @@ class MainActivity : BaseAppCompatActivity() {
 
     override fun dispatchTouchEvent(event: MotionEvent): Boolean {
         FestivalTapObserver.observe(event)
-        PetGazeRouter.onTouchEvent(event)
         return super.dispatchTouchEvent(event)
-    }
-
-    override fun dispatchGenericMotionEvent(event: MotionEvent): Boolean {
-        PetGazeRouter.onGenericMotionEvent(event)
-        return super.dispatchGenericMotionEvent(event)
     }
 
     /**

@@ -74,7 +74,6 @@ import com.movtery.zalithlauncher.ui.screens.content.settings.layouts.CardPositi
 import com.movtery.zalithlauncher.ui.screens.content.settings.layouts.SettingsCard
 import com.movtery.zalithlauncher.ui.theme.itemColor
 import com.movtery.zalithlauncher.ui.theme.onItemColor
-import com.movtery.petlib.R as PetLibR
 
 @Composable
 fun AboutInfoScreen(
@@ -206,7 +205,7 @@ fun AboutInfoScreen(
                             icon = painterResource(R.drawable.img_platform_modrinth),
                             title = "Modrinth App",
                             text = stringResource(R.string.about_acknowledgements_modrinth_text, BuildKeys.LAUNCHER_SHORT_NAME),
-                            openLicense = { openLicense(PetLibR.raw.modrinth_license) },
+                            openLicense = { openLicense(R.raw.modrinth_license) },
                             openLink = { openLink("https://github.com/modrinth/code") },
                         )
                         LinkIconItem(
