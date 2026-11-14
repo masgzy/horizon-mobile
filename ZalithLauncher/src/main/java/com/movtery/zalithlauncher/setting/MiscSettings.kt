@@ -18,7 +18,6 @@
 
 package com.movtery.zalithlauncher.setting
 
-import com.movtery.zalithlauncher.game.download.addon.platform.Platform
 import com.movtery.zalithlauncher.game.path.GamePathManager
 import com.movtery.zalithlauncher.ui.screens.content.elements.SortByEnum
 
@@ -56,27 +55,22 @@ object MiscSettings : SettingsRegistry() {
     /**
      * 陶瓦联机：自定义 EasyTier 服务器节点
      */
-    val terracottaNodes = stringSetting("terracottaNodes", "")
 
     /**
      * 搜索模组的初始搜索平台
      */
-    val searchModPlatform = enumSetting("searchModPlatform", Platform.CURSEFORGE)
 
     /**
      * 搜索整合包的初始搜索平台
      */
-    val searchModpackPlatform = enumSetting("searchModpackPlatform", Platform.CURSEFORGE)
 
     /**
      * 搜索资源包的初始搜索平台
      */
-    val searchResourcePackPlatform = enumSetting("searchResourcePackPlatform", Platform.CURSEFORGE)
 
     /**
      * 搜索光影的初始搜索平台
      */
-    val searchShadersPlatform = enumSetting("searchShadersPlatform", Platform.CURSEFORGE)
 
     /**
      * 模组管理屏幕的排序方式

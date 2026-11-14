@@ -19,18 +19,14 @@
 package com.movtery.zalithlauncher.viewmodel
 
 import android.net.Uri
-import android.view.KeyEvent
 import android.widget.Toast
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.movtery.zalithlauncher.game.version.installed.Version
 import com.movtery.zalithlauncher.ui.AndroidStringText
-import com.movtery.zalithlauncher.ui.control.input.TextInputMode
 import com.movtery.zalithlauncher.ui.guide.GuideKeys
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.launch
-import java.io.File
 
 class EventViewModel : ViewModel() {
     private val _events = MutableSharedFlow<Event>(extraBufferCapacity = 1)
@@ -46,43 +42,6 @@ class EventViewModel : ViewModel() {
     }
 
     sealed interface Event {
-        sealed interface Key : Event {
-            /** 让MainActivity开始按键捕获 */
-            data object StartKeyCapture : Key
-            /** 让MainActivity停止按键捕获 */
-            data object StopKeyCapture : Key
-            /** 由MainActivity发送的按键捕获结果 */
-            data class OnKeyDown(val key: KeyEvent) : Key
-        }
-        sealed interface Game : Event {
-            /** 禁用/启用VMActivity按键处理 */
-            data class KeyHandle(val handle: Boolean): Game
-            /** 呼出IME */
-            data class SwitchIme(val mode: TextInputMode?) : Game
-            /** 刷新游戏画面分辨率 */
-            data object RefreshSize : Game
-            /** 用户按下系统返回键 */
-            data object OnBack : Game
-            /** [com.movtery.zalithlauncher.game.launch.handler.AbstractHandler.onResume] */
-            data object OnResume: Game
-        }
-        sealed interface Terracotta : Event {
-            /** 申请 VPN 权限 */
-            data object RequestVPN : Terracotta
-            /** 更新 VPN 状态文本 */
-            data class VPNUpdateState(val stringRes: Int): Terracotta
-            /** 关停 VPN */
-            data object StopVPN : Terracotta
-        }
-        /** 启动游戏相关的事件 */
-        sealed interface Launch : Event {
-            /** 主菜单的启动游戏 */
-            data class Game(val version: Version?) : Launch
-            /** 快速启动游戏并进入服务器 */
-            data class PlayServer(val version: Version, val address: String): Launch
-            /** 快速启动游戏并进入存档 */
-            data class PlaySave(val version: Version, val saveName: String): Launch
-        }
         /** 检查更新 */
         data object CheckUpdate : Event
         /** 查看当月赞助者 */
@@ -91,8 +50,6 @@ class EventViewModel : ViewModel() {
         data class OpenLink(val url: String) : Event
         /** 让 MainActivity 防止熄屏 */
         data class KeepScreen(val on: Boolean) : Event
-        /** 导入控制布局 */
-        data class ImportControls(val uris: List<Uri>) : Event
         /** 打开下载插件的链接窗口 */
         data class DownloadPlugins(val link: Links): Event {
             data class Links(
@@ -109,13 +66,6 @@ class EventViewModel : ViewModel() {
                 val link: String
             )
         }
-        /** 分享游戏日志 */
-        sealed interface LogShare : Event {
-            data class ShareGameLog(val logFile: File) : LogShare
-        }
-        /** 设备 Vulkan 检查 */
-        data class VulkanCheck(val version: Version): Event
-
         /** 在 MainActivity 中显示 Toast */
         data class ShowToast(
             val text: AndroidStringText,

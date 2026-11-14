@@ -1588,4 +1588,12 @@
     <string name="guide_joystick_events_lock_text4">请点击按钮编辑触发事件</string>
     <string name="guide_joystick_events_events_text1">可触发的事件与普通按钮一致，自由度很高</string>
     <string name="guide_joystick_events_events_text2">若只想用于控制游戏，编辑“按键”分区的实际键值绑定即可</string>
+    <!-- Horizon 外壳（主页与引擎管理） -->
+    <string name="horizon_home_engine_title">Horizon 引擎</string>
+    <string name="horizon_home_engine_installed">已安装：%1$s（Minecraft %2$s）</string>
+    <string name="horizon_home_engine_missing">尚未安装引擎，请先在 Horizon 管理页安装</string>
+    <string name="horizon_home_launch">启动 Horizon</string>
+    <string name="horizon_home_manage">引擎与资源管理</string>
+    <string name="horizon_home_website">官方网站</string>
+    <string name="horizon_home_docs">官方文档</string>
 </resources>

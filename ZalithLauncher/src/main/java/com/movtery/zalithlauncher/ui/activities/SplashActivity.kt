@@ -1,5 +1,5 @@
 /*
- * Zalith Launcher 2
+ * Zalith Launcher 2 (Horizon fork)
  * Copyright (C) 2025-2026 MovTery <movtery228@qq.com> and contributors
  *
  * This program is free software: you can redistribute it and/or modify
@@ -20,8 +20,6 @@ package com.movtery.zalithlauncher.ui.activities
 
 import android.annotation.SuppressLint
 import android.content.Intent
-import android.content.pm.PackageManager
-import android.net.Uri
 import android.os.Bundle
 import androidx.activity.compose.setContent
 import androidx.activity.viewModels
@@ -33,16 +31,9 @@ import androidx.lifecycle.lifecycleScope
 import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import com.movtery.zalithlauncher.BuildKeys
 import com.movtery.zalithlauncher.R
-import com.movtery.zalithlauncher.components.Components
-import com.movtery.zalithlauncher.components.InstallableItem
-import com.movtery.zalithlauncher.components.UnpackComponentsTask
-import com.movtery.zalithlauncher.components.jre.Jre
-import com.movtery.zalithlauncher.components.jre.UnpackJnaTask
-import com.movtery.zalithlauncher.components.jre.UnpackJreTask
 import com.movtery.zalithlauncher.context.readAssetFile
 import com.movtery.zalithlauncher.legal.AvailableAgreement
 import com.movtery.zalithlauncher.path.GLOBAL_JSON
-import com.movtery.zalithlauncher.setting.GameSettings
 import com.movtery.zalithlauncher.setting.launcherMMKV
 import com.movtery.zalithlauncher.ui.base.BaseAppCompatActivity
 import com.movtery.zalithlauncher.ui.screens.navigateOnce
@@ -56,41 +47,28 @@ import com.movtery.zalithlauncher.utils.device.Architecture
 import com.movtery.zalithlauncher.utils.logging.Logger
 import com.movtery.zalithlauncher.viewmodel.SplashBackStackViewModel
 import dagger.hilt.android.AndroidEntryPoint
-import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
-import kotlinx.coroutines.joinAll
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
-import java.util.concurrent.atomic.AtomicInteger
 
 private const val TAG = "SplashActivity"
-
-const val EXTRA_IMPORT_ACTION = "EXTRA_IMPORT_ACTION"
-const val EXTRA_IMPORT_URI    = "EXTRA_IMPORT_URI"
-const val EXTRA_IMPORT_TYPE   = "EXTRA_IMPORT_TYPE"
-
-const val IMPORT_TYPE_MODPACK = "modpack"
-const val IMPORT_TYPE_CONTROLS = "controls"
-const val IMPORT_TYPE_UNKNOWN = "unknown"
 
 private const val WELCOME_VERSION_KEY = "welcomeVersionKey"
 private const val WELCOME_VERSION_VALUE = 1
 private const val AGREEMENT_DATA_PATH = "legal/data.json"
 private const val ACCEPTED_AGREEMENT_VERSION_KEY = "acceptedAgreementVersion"
 
+/**
+ * 首启流程（Horizon 外壳）：架构检查 → 欢迎/协议 → 主页。
+ * Java 版时代的 JRE/组件解包环节已随其依赖移除——引擎、原版资源与 OpenJDK 运行时
+ * 均由 HorizonManagerActivity 按需下载与准备。
+ */
 @SuppressLint("CustomSplashScreen")
 @AndroidEntryPoint
 class SplashActivity : BaseAppCompatActivity() {
-    private val unpackItems: MutableList<InstallableItem> = ArrayList()
-    private val finishedTaskCount = AtomicInteger(0)
-    private var unpackJob: Job? = null
-
-    private var pendingImportIntent: Intent? = null
-
     private val backStackViewModel: SplashBackStackViewModel by viewModels()
     private val _availableAgreement = MutableStateFlow<AvailableAgreement?>(null)
     private val availableAgreement = _availableAgreement.asStateFlow()
@@ -133,8 +111,6 @@ class SplashActivity : BaseAppCompatActivity() {
         installSplashScreen()
         super.onCreate(savedInstanceState)
 
-        initUnpackItems()
-
         setContent {
             ZalithLauncherTheme {
                 Surface(
@@ -143,16 +119,14 @@ class SplashActivity : BaseAppCompatActivity() {
                     contentColor = onBackgroundColor()
                 ) {
                     SplashScreen(
-                        startAllTask = { startAllTask() },
                         onWelcomeFinished = {
                             launcherMMKV().putInt(WELCOME_VERSION_KEY, WELCOME_VERSION_VALUE).apply()
                             acceptCurrentAgreement()
                             switchScreen(SplashOperation.Loading)
-                            checkTasksToMain()
+                            swapToMain()
                         },
                         onExitClick = { finishAffinity() },
                         availableAgreement = availableAgreement,
-                        unpackItems = unpackItems,
                         screenViewModel = backStackViewModel
                     )
                 }
@@ -169,7 +143,6 @@ class SplashActivity : BaseAppCompatActivity() {
             }
 
             withContext(Dispatchers.IO) {
-                checkAllTask()
                 val agreement = loadAvailableAgreement()
                 _availableAgreement.update { agreement }
             }
@@ -187,178 +160,9 @@ class SplashActivity : BaseAppCompatActivity() {
                     showAgreementUpdateDialog()
                 }
             } else {
-                checkTasksToMain()
+                swapToMain()
             }
         }
-    }
-
-    override fun onNewIntent(intent: Intent) {
-        super.onNewIntent(intent)
-        setIntent(intent)
-
-        //若依赖未完成，暂存外部导入，待依赖完成后处理
-        if (!areAllTasksFinished()) {
-            if (isImportIntent(intent) && !isLauncherIntent(intent)) {
-                pendingImportIntent = intent
-                Logger.info(TAG, "Import intent received but dependencies are not ready, deferring.")
-            }
-            return
-        }
-
-        if (isImportIntent(intent) && !isLauncherIntent(intent)) {
-            handleImportIntent(intent)
-            finish()
-        }
-    }
-
-    private fun initUnpackItems() {
-        Components.entries.forEach { component ->
-            val task = UnpackComponentsTask(this@SplashActivity, component)
-            unpackItems.add(
-                InstallableItem(
-                    component.displayName,
-                    getString(component.summary),
-                    task
-                )
-            )
-        }
-        Jre.entries.forEach { jre ->
-            val task = UnpackJreTask(this@SplashActivity, jre)
-            if (!task.isCheckFailed()) {
-                unpackItems.add(
-                    InstallableItem(
-                        jre.jreName,
-                        getString(jre.summary),
-                        task
-                    )
-                )
-            }
-        }
-        unpackItems.add(
-            InstallableItem(
-                "JNA",
-                getString(R.string.unpack_screen_jna),
-                UnpackJnaTask(this@SplashActivity)
-            )
-        )
-        unpackItems.sort()
-    }
-
-    private suspend fun checkAllTask() {
-        //检查应用 assets 目录
-        listAssetsPath("runtimes").forEach { filePath ->
-            Logger.info(TAG, "The launcher contains the runtime environment: $filePath")
-        }
-
-        unpackItems.forEach { item ->
-            val state = item.task.checkState()
-            item.updateState(state)
-            if (state == InstallableItem.State.FINISHED) {
-                finishedTaskCount.incrementAndGet()
-            }
-        }
-    }
-
-    private fun listAssetsPath(root: String): List<String> {
-        return buildList {
-            val rootFiles = runCatching {
-                assets.list(root)?.takeIf { it.isNotEmpty() }
-            }.getOrNull()
-            if (rootFiles != null) {
-                rootFiles.forEach { child ->
-                    val childPath = "$root/$child"
-                    val childFiles = runCatching {
-                        assets.list(childPath)?.takeIf { it.isNotEmpty() }
-                    }.getOrNull()
-
-                    if (childFiles != null) {
-                        addAll(listAssetsPath(childPath))
-                    } else {
-                        add(childPath)
-                    }
-                }
-            } else {
-                add(root)
-            }
-        }
-    }
-
-    private fun startAllTask() {
-        if (unpackJob?.isActive == true) return
-        switchScreen(SplashOperation.Unpacking)
-
-        unpackJob = lifecycleScope.launch {
-            val jobs = unpackItems
-                .filter {
-                    val state = it.state.value
-                    state == InstallableItem.State.NOT_STARTED ||
-                    state == InstallableItem.State.PENDING ||
-                    state == InstallableItem.State.FAILED
-                }
-                .map { item ->
-                    launch(Dispatchers.IO) {
-                        item.updateState(InstallableItem.State.RUNNING)
-                        item.task.updateMessage(null)
-                        try {
-                            item.task.run()
-                            finishedTaskCount.incrementAndGet()
-                            item.updateState(InstallableItem.State.FINISHED)
-                        } catch (e: CancellationException) {
-                            throw e
-                        } catch (e: Exception) {
-                            Logger.error(TAG, "Failed to install component: ${item.name}", e)
-                            item.task.updateMessage(e.message ?: e.javaClass.simpleName)
-                            item.updateState(InstallableItem.State.FAILED)
-                        }
-                    }
-                }
-            jobs.joinAll()
-            if (areAllTasksFinished()) {
-                GameSettings.javaRuntime.apply {
-                    //检查并设置默认的Java环境
-                    if (getValue().isEmpty()) save(Jre.JRE_8.jreName)
-                }
-                finishSplash()
-            }
-        }
-    }
-
-    private fun finishSplash() {
-        val import = pendingImportIntent
-            ?.takeIf { isImportIntent(it) && !isLauncherIntent(it) }
-            ?: intent.takeIf { isImportIntent(it) && !isLauncherIntent(it) }
-
-        if (import != null && handleImportIntent(import)) {
-            finish()
-        } else {
-            swapToMain()
-        }
-    }
-
-    private fun checkTasksToMain() {
-        fun run(): Boolean {
-            if (!areAllTasksFinished()) return false
-
-            Logger.info(TAG, "All content that needs to be extracted is already the latest version!")
-
-            if (isImportIntent(intent) && !isLauncherIntent(intent)) {
-                val success = handleImportIntent(intent)
-                if (success) {
-                    finish()
-                    return true
-                }
-            }
-
-            swapToMain()
-            return true
-        }
-
-        val screen = if (run()) {
-            SplashOperation.Loading
-        } else {
-            SplashOperation.Unpacking
-        }
-        switchScreen(screen)
     }
 
     private fun swapToMain() {
@@ -367,68 +171,5 @@ class SplashActivity : BaseAppCompatActivity() {
         }
         startActivity(forward)
         finish()
-    }
-
-
-
-    private fun handleImportIntent(source: Intent): Boolean {
-        if (!isImportIntent(source)) return false
-
-        val uri: Uri? = when (source.action) {
-            Intent.ACTION_SEND -> {
-                source.clipData?.getItemAt(0)?.uri
-                    ?: source.getParcelableExtra(Intent.EXTRA_STREAM)
-            }
-            Intent.ACTION_VIEW -> source.data
-            else -> null
-        }
-
-        if (uri == null) {
-            Logger.warning(TAG, "No valid import Uri found")
-            return false
-        } else {
-            try {
-                //可持久化访问授权
-                contentResolver.takePersistableUriPermission(uri, Intent.FLAG_GRANT_READ_URI_PERMISSION)
-            } catch (_: Exception) {
-                Logger.warning(TAG, "No persistable permission granted for $uri")
-            }
-        }
-
-        val forward = Intent(this, MainActivity::class.java).apply {
-            flags = Intent.FLAG_ACTIVITY_CLEAR_TOP or
-                    Intent.FLAG_ACTIVITY_SINGLE_TOP
-
-            putExtra(EXTRA_IMPORT_ACTION, source.action)
-            putExtra(EXTRA_IMPORT_URI, uri)
-            putExtra(EXTRA_IMPORT_TYPE, resolveImportType(source))
-        }
-
-        startActivity(forward)
-        return true
-    }
-
-    /**
-     * 根据 AndroidManifest 内为 activity-alias 配置的 meta-data 来判断导入类型
-     */
-    private fun resolveImportType(intent: Intent): String {
-        val comp = intent.component ?: return IMPORT_TYPE_UNKNOWN
-        val info = packageManager.getActivityInfo(comp, PackageManager.GET_META_DATA)
-        return info.metaData?.getString("import_type") ?: IMPORT_TYPE_UNKNOWN
-    }
-
-    private fun isLauncherIntent(intent: Intent?): Boolean {
-        return intent != null && intent.action == Intent.ACTION_MAIN &&
-                intent.categories?.contains(Intent.CATEGORY_LAUNCHER) == true
-    }
-
-    private fun isImportIntent(intent: Intent?): Boolean {
-        val comp = intent?.component ?: return false
-        val info = packageManager.getActivityInfo(comp, PackageManager.GET_META_DATA)
-        return info.metaData?.getString("import_type") != null
-    }
-
-    private fun areAllTasksFinished(): Boolean {
-        return finishedTaskCount.get() >= unpackItems.size
     }
 }

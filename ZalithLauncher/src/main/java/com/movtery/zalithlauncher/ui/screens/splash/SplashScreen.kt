@@ -35,7 +35,6 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.navigation3.runtime.entryProvider
 import com.movtery.zalithlauncher.R
-import com.movtery.zalithlauncher.components.InstallableItem
 import com.movtery.zalithlauncher.legal.AvailableAgreement
 import com.movtery.zalithlauncher.ui.base.BaseScreen
 import com.movtery.zalithlauncher.ui.components.AnimatedDirection
@@ -48,29 +47,23 @@ import com.movtery.zalithlauncher.viewmodel.SplashBackStackViewModel
 import kotlinx.coroutines.flow.StateFlow
 
 /**
- * @param startAllTask 开启全部的解压任务
  * @param onWelcomeFinished 完成欢迎页
  * @param onExitClick 架构不匹配屏幕的退出按钮
  * @param availableAgreement 完整的可用协议数据
- * @param unpackItems 解压任务列表
  */
 @Composable
 fun SplashScreen(
-    startAllTask: () -> Unit,
     onWelcomeFinished: () -> Unit,
     onExitClick: () -> Unit = {},
     availableAgreement: StateFlow<AvailableAgreement?>,
-    unpackItems: List<InstallableItem>,
     screenViewModel: SplashBackStackViewModel
 ) {
     NavStateHost(rootKey = screenViewModel.splashScreen) {
         NavigationUI(
             modifier = Modifier.fillMaxSize(),
-            startAllTask = startAllTask,
             onWelcomeFinished = onWelcomeFinished,
             onExitClick = onExitClick,
             availableAgreement = availableAgreement,
-            unpackItems = unpackItems,
             screenViewModel = screenViewModel
         )
     }
@@ -79,11 +72,9 @@ fun SplashScreen(
 @Composable
 private fun NavigationUI(
     modifier: Modifier = Modifier,
-    startAllTask: () -> Unit,
     onWelcomeFinished: () -> Unit,
     onExitClick: () -> Unit = {},
     availableAgreement: StateFlow<AvailableAgreement?>,
-    unpackItems: List<InstallableItem>,
     screenViewModel: SplashBackStackViewModel
 ) {
     val backStack = screenViewModel.splashScreen.backStack
@@ -111,13 +102,6 @@ private fun NavigationUI(
                         onFinished = onWelcomeFinished,
                         availableAgreement = availableAgreement,
                         screenViewModel = screenViewModel
-                    )
-                }
-                entry<SplashOperation.Unpacking> {
-                    UnpackScreen(
-                        items = unpackItems,
-                        screenViewModel = screenViewModel,
-                        onAgreeClick = startAllTask
                     )
                 }
                 entry<SplashOperation.ArchMismatch> {

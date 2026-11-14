@@ -25,30 +25,17 @@ import androidx.room.RoomDatabase
 import androidx.room.TypeConverters
 import androidx.room.migration.Migration
 import androidx.sqlite.db.SupportSQLiteDatabase
-import com.movtery.zalithlauncher.game.account.Account
-import com.movtery.zalithlauncher.game.account.AccountDao
-import com.movtery.zalithlauncher.game.account.auth_server.data.AuthServer
-import com.movtery.zalithlauncher.game.account.auth_server.data.AuthServerDao
 import com.movtery.zalithlauncher.game.path.GamePath
 import com.movtery.zalithlauncher.game.path.GamePathDao
 
 @Database(
-    entities = [Account::class, AuthServer::class, GamePath::class],
+    entities = [GamePath::class],
+    // v2 含账号表；Horizon 外壳不再使用账号，保留 version=2 以沿用既有数据库文件
     version = 2,
     exportSchema = false //默认不支持导出
 )
 @TypeConverters(Converters::class)
 abstract class AppDatabase : RoomDatabase() {
-    /**
-     * 启动器账号
-     */
-    abstract fun accountDao(): AccountDao
-
-    /**
-     * 认证服务器
-     */
-    abstract fun authServerDao(): AuthServerDao
-
     /**
      * 游戏目录
      */

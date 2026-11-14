@@ -20,7 +20,6 @@ package com.movtery.zalithlauncher.game.path
 
 import android.content.Context
 import com.movtery.zalithlauncher.database.AppDatabase
-import com.movtery.zalithlauncher.game.version.installed.VersionsManager
 import com.movtery.zalithlauncher.path.PathManager
 import com.movtery.zalithlauncher.setting.MiscSettings
 import com.movtery.zalithlauncher.utils.canHandlePermission
@@ -103,7 +102,6 @@ object GamePathManager {
                     refreshCurrentPath(false)
                 }
 
-                VersionsManager.refresh("GamePathManager.reloadPath")
                 Logger.info(TAG, "Loaded ${_gamePathData.value.size} game paths")
             }
         }
@@ -197,9 +195,6 @@ object GamePathManager {
             val path = item.path
             _currentPath.update { path }
             path.createNoMediaFile()
-            if (reloadVersions) {
-                VersionsManager.refresh("GamePathManager.refreshCurrentPath")
-            }
         } ?: saveCurrentPath(DEFAULT_ID, reloadVersions)
     }
 

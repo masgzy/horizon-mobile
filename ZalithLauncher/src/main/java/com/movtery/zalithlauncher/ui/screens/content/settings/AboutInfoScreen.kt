@@ -55,9 +55,6 @@ import coil3.request.ImageRequest
 import com.movtery.zalithlauncher.BuildConfig
 import com.movtery.zalithlauncher.BuildKeys
 import com.movtery.zalithlauncher.R
-import com.movtery.zalithlauncher.game.plugin.ApkPlugin
-import com.movtery.zalithlauncher.game.plugin.PluginLoader
-import com.movtery.zalithlauncher.game.plugin.appCacheIcon
 import com.movtery.zalithlauncher.launcherName
 import com.movtery.zalithlauncher.library.LibraryInfo
 import com.movtery.zalithlauncher.library.libraryData
@@ -256,20 +253,6 @@ fun AboutInfoScreen(
                 }
             }
 
-            //已加载插件板块
-            PluginLoader.allPlugins.takeIf { it.isNotEmpty() }?.let { allPlugins ->
-                animatedItem { ctx ->
-                    ChunkLayout(
-                        modifier = Modifier.animated(ctx),
-                        title = stringResource(R.string.about_plugin_title)
-                    ) {
-                        Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                            allPlugins.forEach { apkPlugin ->
-                                PluginInfoItem(apkPlugin = apkPlugin)
-                            }
-                        }
-                    }
-                }
             }
         }
     }
@@ -438,78 +421,6 @@ private fun ButtonIconItem(
             }
 
             button()
-        }
-    }
-}
-
-@Composable
-private fun PluginInfoItem(
-    apkPlugin: ApkPlugin,
-    modifier: Modifier = Modifier,
-    color: Color = itemColor(),
-    contentColor: Color = onItemColor(),
-) {
-    Surface(
-        modifier = modifier,
-        color = color,
-        contentColor = contentColor,
-        shape = MaterialTheme.shapes.large,
-        onClick = {}
-    ) {
-        val context = LocalContext.current
-        Row(
-            modifier = Modifier
-                .padding(all = 12.dp)
-                .fillMaxWidth(),
-            horizontalArrangement = Arrangement.spacedBy(12.dp)
-        ) {
-            val iconFile = appCacheIcon(apkPlugin.packageName)
-            if (iconFile.exists()) {
-                val model = remember(context, iconFile) {
-                    ImageRequest.Builder(context)
-                        .data(iconFile)
-                        .build()
-                }
-                AsyncImage(
-                    modifier = Modifier
-                        .size(34.dp)
-                        .clip(shape = RoundedCornerShape(8.dp)),
-                    model = model,
-                    contentDescription = null,
-                    contentScale = ContentScale.Fit
-                )
-            } else {
-                Image(
-                    modifier = Modifier.size(34.dp),
-                    painter = painterResource(R.drawable.ic_unknown_icon),
-                    contentDescription = null,
-                    contentScale = ContentScale.Fit
-                )
-            }
-
-            Column(
-                modifier = Modifier.align(Alignment.CenterVertically)
-            ) {
-                Text(
-                    text = apkPlugin.appName,
-                    style = MaterialTheme.typography.titleSmall
-                )
-                Row(
-                    modifier = Modifier.alpha(0.7f),
-                    horizontalArrangement = Arrangement.spacedBy(12.dp)
-                ) {
-                    Text(
-                        text = apkPlugin.packageName,
-                        style = MaterialTheme.typography.bodySmall
-                    )
-                    if (apkPlugin.appVersion.isNotEmpty()) {
-                        Text(
-                            text = apkPlugin.appVersion,
-                            style = MaterialTheme.typography.bodySmall
-                        )
-                    }
-                }
-            }
         }
     }
 }

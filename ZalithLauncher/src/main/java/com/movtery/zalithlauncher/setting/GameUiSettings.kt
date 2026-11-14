@@ -19,7 +19,6 @@
 package com.movtery.zalithlauncher.setting
 
 import androidx.compose.ui.geometry.Offset
-import com.movtery.layer_controller.utils.snap.SnapMode
 import com.movtery.zalithlauncher.setting.enums.FpsDisplayMode
 import com.movtery.zalithlauncher.ui.control.HotbarRule
 
@@ -102,5 +101,4 @@ object GameUiSettings : SettingsRegistry() {
     /**
      * 控制布局编辑器：控件吸附模式
      */
-    val editorWidgetSnapMode = enumSetting("editorWidgetSnapMode", SnapMode.FullScreen)
 }

@@ -138,7 +138,7 @@ class FileManagerActivity : ComponentActivity() {
 
     override fun onResume() {
         super.onResume()
-        loadAllSettings(this, true)
+        loadAllSettings(true)
         applySystemUiByOrientation()
         @Suppress("DEPRECATION")
         setTaskDescription(

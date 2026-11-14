@@ -59,69 +59,66 @@
             </intent-filter>
         </activity>
 
-        <activity-alias
-            android:label="@string/import_modpack"
-            android:name="com.movtery.activity.ImportModpackActivity"
-            android:exported="true"
-            android:targetActivity=".ui.activities.SplashActivity">
-
-            <meta-data
-                android:name="import_type"
-                android:value="modpack" />
-
-            <intent-filter>
-                <category android:name="android.intent.category.DEFAULT"/>
-                <action android:name="android.intent.action.VIEW"/>
-                <data android:scheme="file"/>
-                <data android:scheme="content"/>
-                <data android:mimeType="application/*"/>
-            </intent-filter>
-            <intent-filter>
-                <category android:name="android.intent.category.DEFAULT"/>
-                <action android:name="android.intent.action.SEND"/>
-                <data android:mimeType="application/*"/>
-            </intent-filter>
-        </activity-alias>
-
-        <activity-alias
-            android:label="@string/control_manage_import"
-            android:name="com.movtery.activity.ImportControlsActivity"
-            android:exported="true"
-            android:targetActivity=".ui.activities.SplashActivity">
-
-            <meta-data
-                android:name="import_type"
-                android:value="controls" />
-
-            <intent-filter>
-                <category android:name="android.intent.category.DEFAULT"/>
-                <action android:name="android.intent.action.VIEW"/>
-                <data android:scheme="file"/>
-                <data android:scheme="content"/>
-                <data android:mimeType="application/json"/>
-            </intent-filter>
-            <intent-filter>
-                <category android:name="android.intent.category.DEFAULT"/>
-                <action android:name="android.intent.action.SEND"/>
-                <data android:mimeType="application/json"/>
-            </intent-filter>
-        </activity-alias>
-
         <activity
             android:name=".ui.activities.MainActivity"
             android:launchMode="singleTop"
             android:configChanges="keyboardHidden|orientation|screenSize|smallestScreenSize|screenLayout|keyboard|navigation"
             android:screenOrientation="sensorLandscape" />
+
+        <!-- ══════════ Horizon（Rust 重写的 Java 版）的外壳组件 ══════════
+             引擎不在 APK 里：GameActivity 是 NativeActivity，android.app.lib_name 指向
+             jni-horizon 的转发桩（horizon_stub），桩把入口交给下载安装的引擎库
+             （game/horizon/EngineRepository）。Java 侧回调面来自 starling 的平台层
+             （io.github.juanluci.starling，JNI 符号要求包名不变）。 -->
+
+        <uses-feature
+            android:name="android.hardware.vulkan.version"
+            android:version="0x400003"
+            android:required="false" />
+
         <activity
-            android:name=".ui.activities.ControlEditorActivity"
+            android:name="io.github.juanluci.starling.GameActivity"
+            android:exported="false"
+            android:launchMode="singleTask"
+            android:screenOrientation="sensorLandscape"
+            android:resizeableActivity="false"
+            android:theme="@style/Starling.Game"
+            android:configChanges="mcc|mnc|locale|touchscreen|keyboard|keyboardHidden|navigation|screenLayout|fontScale|uiMode|orientation|density|screenSize|smallestScreenSize|layoutDirection|colorMode|fontWeightAdjustment|grammaticalGender">
+            <meta-data android:name="android.app.lib_name" android:value="horizon_stub" />
+            <meta-data android:name="android.app.func_name" android:value="starling_on_create" />
+        </activity>
+
+        <activity
+            android:name="com.movtery.zalithlauncher.ui.activities.HorizonManagerActivity"
+            android:exported="false"
             android:configChanges="keyboardHidden|orientation|screenSize|smallestScreenSize|screenLayout|keyboard|navigation"
             android:screenOrientation="sensorLandscape" />
+
         <activity
-            android:name=".ui.activities.VMActivity"
-            android:configChanges="keyboardHidden|orientation|screenSize|smallestScreenSize|screenLayout|keyboard|navigation"
-            android:process=":game"
-            android:launchMode="standard"
-            android:screenOrientation="sensorLandscape" />
+            android:name="io.github.juanluci.starling.DiagnosticsActivity"
+            android:exported="false"
+            android:process=":diagnostics"
+            android:theme="@style/Starling.Game"
+            android:hardwareAccelerated="false" />
+
+        <service
+            android:name="io.github.juanluci.starling.WorkService"
+            android:exported="false"
+            android:foregroundServiceType="dataSync" />
+
+        <!-- 玩家文件目录在系统的 Files 应用里可见（仅系统可绑定，独立进程） -->
+        <provider
+            android:name="io.github.juanluci.starling.GameFolderProvider"
+            android:authorities="${applicationId}.documents"
+            android:exported="true"
+            android:process=":documents"
+            android:grantUriPermissions="true"
+            android:permission="android.permission.MANAGE_DOCUMENTS">
+            <intent-filter>
+                <action android:name="android.content.action.DOCUMENTS_PROVIDER" />
+            </intent-filter>
+        </provider>
+
         <activity android:name=".ui.activities.ErrorActivity"
             android:configChanges="keyboardHidden|orientation|screenSize|smallestScreenSize|screenLayout|keyboard|navigation"
             android:screenOrientation="sensorLandscape" />
@@ -158,40 +155,6 @@
                 android:value="Keep the launcher process alive while background tasks such as downloads and installations are running" />
         </service>
 
-        <service
-            android:name=".game.download.jvm_server.JvmService"
-            android:enabled="true"
-            android:foregroundServiceType="specialUse"
-            android:process=":jvm">
-            <property
-                android:name="android.app.PROPERTY_SPECIAL_USE_FGS_TYPE"
-                android:value="Run Java Virtual Machine for game or server tasks" />
-        </service>
-
-        <service
-            android:name=".game.launch.GameService"
-            android:enabled="true"
-            android:foregroundServiceType="specialUse"
-            android:process=":game">
-            <property
-                android:name="android.app.PROPERTY_SPECIAL_USE_FGS_TYPE"
-                android:value="Running the game engine and maintaining game process" />
-        </service>
-
-        <service
-            android:name=".terracotta.TerracottaVPNService"
-            android:permission="android.permission.BIND_VPN_SERVICE"
-            android:exported="true"
-            android:process=":game"
-            android:foregroundServiceType="specialUse"
-            tools:ignore="VpnServicePolicy">
-            <property
-                android:name="android.app.PROPERTY_SPECIAL_USE_FGS_TYPE"
-                android:value="Establish VPN tunnel for the multiplayer feature" />
-            <intent-filter>
-                <action android:name="android.net.VpnService" />
-            </intent-filter>
-        </service>
 
         <service
             android:name="androidx.appcompat.app.AppLocalesMetadataHolderService"

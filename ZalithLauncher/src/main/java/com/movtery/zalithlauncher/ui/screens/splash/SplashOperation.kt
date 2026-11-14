@@ -24,6 +24,5 @@ import kotlinx.serialization.Serializable
 sealed interface SplashOperation : TitledNavKey {
     @Serializable data object Loading : SplashOperation
     @Serializable data object Welcome : SplashOperation
-    @Serializable data object Unpacking : SplashOperation
     @Serializable data object ArchMismatch : SplashOperation
 }

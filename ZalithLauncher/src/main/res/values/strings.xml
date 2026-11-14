@@ -3082,4 +3082,12 @@
     <string name="guide_joystick_events_events_text1">The triggerable events are the same as those of regular buttons, so you have plenty of freedom here</string>
     <!-- Closing line of the guide card about editing actual key bindings in the Key section -->
     <string name="guide_joystick_events_events_text2">If you only want to control the game, just edit the actual key bindings in the \"Key\" section</string>
+    <!-- Horizon shell (engine management home) -->
+    <string name="horizon_home_engine_title">Horizon Engine</string>
+    <string name="horizon_home_engine_installed">Installed: %1$s (Minecraft %2$s)</string>
+    <string name="horizon_home_engine_missing">No engine installed yet. Install one in Horizon Manager first.</string>
+    <string name="horizon_home_launch">Launch Horizon</string>
+    <string name="horizon_home_manage">Engine &amp; Resource Manager</string>
+    <string name="horizon_home_website">Website</string>
+    <string name="horizon_home_docs">Docs</string>
 </resources>

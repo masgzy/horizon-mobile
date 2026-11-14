@@ -76,8 +76,6 @@ import androidx.navigation3.runtime.entryProvider
 import com.movtery.zalithlauncher.BuildKeys
 import com.movtery.zalithlauncher.R
 import com.movtery.zalithlauncher.coroutine.TaskSystem
-import com.movtery.zalithlauncher.game.version.installed.Version
-import com.movtery.zalithlauncher.game.version.installed.VersionsManager
 import com.movtery.zalithlauncher.path.PathManager
 import com.movtery.zalithlauncher.setting.LauncherSettings
 import com.movtery.zalithlauncher.ui.AndroidStringText
@@ -92,20 +90,12 @@ import com.movtery.zalithlauncher.ui.screens.NestedNavDisplay
 import com.movtery.zalithlauncher.ui.screens.NestedNavKey
 import com.movtery.zalithlauncher.ui.screens.NormalNavKey
 import com.movtery.zalithlauncher.ui.screens.TitledNavKey
-import com.movtery.zalithlauncher.ui.screens.content.AccountManageScreen
-import com.movtery.zalithlauncher.ui.screens.content.DownloadScreen
 import com.movtery.zalithlauncher.ui.screens.content.FileSelectorScreen
 import com.movtery.zalithlauncher.ui.screens.content.LauncherScreen
 import com.movtery.zalithlauncher.ui.screens.content.LicenseScreen
 import com.movtery.zalithlauncher.ui.screens.content.LogViewScreen
-import com.movtery.zalithlauncher.ui.screens.content.MultiplayerScreen
 import com.movtery.zalithlauncher.ui.screens.content.SettingsScreen
-import com.movtery.zalithlauncher.ui.screens.content.VersionExportScreen
-import com.movtery.zalithlauncher.ui.screens.content.VersionSettingsScreen
-import com.movtery.zalithlauncher.ui.screens.content.VersionsManageScreen
 import com.movtery.zalithlauncher.ui.screens.content.WebViewScreen
-import com.movtery.zalithlauncher.ui.screens.content.addoninfo.AddonInfoScreen
-import com.movtery.zalithlauncher.ui.screens.content.navigateToDownload
 import com.movtery.zalithlauncher.ui.screens.navigateTo
 import com.movtery.zalithlauncher.ui.screens.onBack
 import com.movtery.zalithlauncher.ui.screens.rememberTransitionSpec
@@ -120,8 +110,6 @@ import com.movtery.zalithlauncher.utils.file.formatFileSize
 import com.movtery.zalithlauncher.viewmodel.ErrorViewModel
 import com.movtery.zalithlauncher.viewmodel.EventViewModel
 import com.movtery.zalithlauncher.viewmodel.LocalBackgroundViewModel
-import com.movtery.zalithlauncher.viewmodel.ModifyVersionViewModel
-import com.movtery.zalithlauncher.viewmodel.ModpackImportViewModel
 import com.movtery.zalithlauncher.viewmodel.ScreenBackStackViewModel
 import com.movtery.zalithlauncher.viewmodel.sendKeepScreen
 import com.movtery.zalithlauncher.viewmodel.sendToast
@@ -130,8 +118,6 @@ import com.movtery.zalithlauncher.viewmodel.sendToast
 fun MainScreen(
     screenBackStackModel: ScreenBackStackViewModel,
     eventViewModel: EventViewModel,
-    modpackImportViewModel: ModpackImportViewModel,
-    modifyVersionViewModel: ModifyVersionViewModel,
     submitError: (ErrorViewModel.ThrowableMessage) -> Unit
 ) {
     //监控当前是否有任务正在进行
@@ -193,15 +179,6 @@ fun MainScreen(
                         screenKey = screenBackStackModel.settingsScreen
                     )
                 },
-                toDownloadScreen = {
-                    screenBackStackModel.navigateToDownload()
-                },
-                toMultiplayerScreen = {
-                    screenBackStackModel.mainScreen.removeAndNavigateTo(
-                        removes = screenBackStackModel.clearBeforeNavKeys,
-                        screenKey = NormalNavKey.Multiplayer
-                    )
-                },
                 openFileManager = {
                     eventViewModel.sendEvent(
                         EventViewModel.Event.OpenFileManager(
@@ -225,8 +202,6 @@ fun MainScreen(
                         screenBackStackModel = screenBackStackModel,
                         toMainScreen = toMainScreen,
                         eventViewModel = eventViewModel,
-                        modpackImportViewModel = modpackImportViewModel,
-                        modifyVersionViewModel = modifyVersionViewModel,
                         submitError = submitError
                     )
                 }
@@ -257,15 +232,11 @@ private fun <E: TitledNavKey> TopBar(
     onScreenBack: () -> Unit,
     toMainScreen: () -> Unit,
     toSettingsScreen: () -> Unit,
-    toDownloadScreen: () -> Unit,
-    toMultiplayerScreen: () -> Unit,
     openFileManager: () -> Unit,
     changeExpandedState: () -> Unit,
 ) {
     val festivals = LocalFestivals.current
 
-    val inMultiplayerScreen = mainScreenKey is NormalNavKey.Multiplayer
-    val inDownloadScreen = mainScreenKey is NestedNavKey.Download
     val inSettingsScreen = mainScreenKey is NestedNavKey.Settings
 
     CompositionLocalProvider(
@@ -418,24 +389,6 @@ private fun <E: TitledNavKey> TopBar(
                 }
 
                 TopBarRailItem(
-                    selected = inMultiplayerScreen,
-                    painter = painterResource(R.drawable.ic_group_filled),
-                    text = stringResource(R.string.terracotta),
-                    onClick = {
-                        if (!inMultiplayerScreen) toMultiplayerScreen()
-                    },
-                )
-
-                TopBarRailItem(
-                    selected = inDownloadScreen,
-                    painter = painterResource(R.drawable.ic_download_2_filled),
-                    text = stringResource(R.string.generic_download),
-                    onClick = {
-                        if (!inDownloadScreen) toDownloadScreen()
-                    },
-                )
-
-                TopBarRailItem(
                     selected = inSettingsScreen,
                     painter = painterResource(R.drawable.ic_settings_filled),
                     text = stringResource(R.string.generic_setting),
@@ -489,8 +442,6 @@ private fun NavigationUI(
     screenBackStackModel: ScreenBackStackViewModel,
     toMainScreen: () -> Unit,
     eventViewModel: EventViewModel,
-    modpackImportViewModel: ModpackImportViewModel,
-    modifyVersionViewModel: ModifyVersionViewModel,
     submitError: (ErrorViewModel.ThrowableMessage) -> Unit
 ) {
     val backStack = screenBackStackModel.mainScreen.backStack
@@ -501,22 +452,6 @@ private fun NavigationUI(
     }
 
     if (backStack.isNotEmpty()) {
-        /** 导航至版本详细信息屏幕 */
-        val navigateToVersions: (Version) -> Unit = { version ->
-            screenBackStackModel.mainScreen.navigateTo(
-                screenKey = NestedNavKey.VersionSettings(version),
-                useClassEquality = true
-            )
-        }
-        /** 导航至整合包导出屏幕 */
-        val navigateToExport: (Version) -> Unit = { version ->
-            screenBackStackModel.mainScreen.removeAndNavigateTo(
-                remove = NestedNavKey.VersionSettings::class,
-                screenKey = NestedNavKey.VersionExport(version),
-                useClassEquality = true
-            )
-        }
-
         NestedNavDisplay(
             ownerKey = screenBackStackModel.mainScreen,
             backStack = backStack,
@@ -530,23 +465,6 @@ private fun NavigationUI(
                 entry<NormalNavKey.LauncherMain> {
                     LauncherScreen(
                         backStackViewModel = screenBackStackModel,
-                        navigateToVersions = navigateToVersions,
-                        onLaunchGame = { version ->
-                            eventViewModel.sendEvent(
-                                EventViewModel.Event.Launch.Game(version)
-                            )
-                        },
-                        onQuickPlayServer = { version, address ->
-                            val target = (version ?: VersionsManager.currentVersion.value)?.takeIf { it.isValid() }
-                            if (target != null) {
-                                eventViewModel.sendEvent(
-                                    EventViewModel.Event.Launch.PlayServer(target, address)
-                                )
-                            } else {
-                                eventViewModel.sendToast(androidText(R.string.game_launch_no_version))
-                                screenBackStackModel.mainScreen.navigateTo(NormalNavKey.VersionsManager)
-                            }
-                        },
                         onOpenLink = {
                             eventViewModel.sendEvent(EventViewModel.Event.OpenLink(it))
                         },
@@ -572,32 +490,11 @@ private fun NavigationUI(
                         backStackViewModel = screenBackStackModel
                     )
                 }
-                entry<NormalNavKey.AccountManager> { key ->
-                    AccountManageScreen(
-                        key = key,
-                        backStackViewModel = screenBackStackModel,
-                        backToMainScreen = toMainScreen,
-                        openLink = { url ->
-                            eventViewModel.sendEvent(EventViewModel.Event.OpenLink(url))
-                        },
-                        eventViewModel = eventViewModel,
-                        submitError = submitError
-                    )
-                }
                 entry<NormalNavKey.WebScreen> { key ->
                     WebViewScreen(
                         key = key,
                         backStackViewModel = screenBackStackModel,
                         eventViewModel = eventViewModel
-                    )
-                }
-                entry<NormalNavKey.VersionsManager> {
-                    VersionsManageScreen(
-                        backScreenViewModel = screenBackStackModel,
-                        navigateToVersions = navigateToVersions,
-                        navigateToExport = navigateToExport,
-                        eventViewModel = eventViewModel,
-                        submitError = submitError
                     )
                 }
                 entry<NormalNavKey.FileSelector> { key ->
@@ -607,51 +504,6 @@ private fun NavigationUI(
                     ) {
                         backStack.removeLastOrNull()
                     }
-                }
-                entry<NestedNavKey.VersionSettings> { key ->
-                    VersionSettingsScreen(
-                        key = key,
-                        modifyViewModel = modifyVersionViewModel,
-                        backScreenViewModel = screenBackStackModel,
-                        backToMainScreen = toMainScreen,
-                        onExportModpack = {
-                            navigateToExport(key.version)
-                        },
-                        eventViewModel = eventViewModel,
-                        submitError = submitError
-                    )
-                }
-                entry<NestedNavKey.VersionExport> { key ->
-                    VersionExportScreen(
-                        key = key,
-                        backScreenViewModel = screenBackStackModel,
-                        eventViewModel = eventViewModel,
-                        backToMainScreen = toMainScreen
-                    )
-                }
-                entry<NestedNavKey.Download> { key ->
-                    DownloadScreen(
-                        key = key,
-                        backScreenViewModel = screenBackStackModel,
-                        eventViewModel = eventViewModel,
-                        modpackImportViewModel = modpackImportViewModel,
-                        submitError = submitError
-                    )
-                }
-                entry<NestedNavKey.AddonInfo> { key ->
-                    AddonInfoScreen(
-                        key = key,
-                        mainScreenKey = screenBackStackModel.mainScreen.currentKey,
-                        addonInfoScreenKey = key.currentKey,
-                        eventViewModel = eventViewModel,
-                        submitError = submitError,
-                    )
-                }
-                entry<NormalNavKey.Multiplayer> {
-                    MultiplayerScreen(
-                        backScreenViewModel = screenBackStackModel,
-                        eventViewModel = eventViewModel
-                    )
                 }
                 entry<NormalNavKey.LogView> { key ->
                     LogViewScreen(

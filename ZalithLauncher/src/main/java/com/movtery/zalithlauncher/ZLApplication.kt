@@ -36,7 +36,6 @@ import com.kyant.fishnet.Fishnet
 import com.movtery.zalithlauncher.context.GlobalContext
 import com.movtery.zalithlauncher.context.refreshContext
 import com.movtery.zalithlauncher.coroutine.TaskSystem
-import com.movtery.zalithlauncher.game.account.AccountsManager
 import com.movtery.zalithlauncher.game.path.GamePathManager
 import com.movtery.zalithlauncher.keepalive.TaskKeepAlive
 import com.movtery.zalithlauncher.path.IMAGE_LOADER_CLIENT
@@ -92,7 +91,7 @@ class ZLApplication : Application(), SingletonImageLoader.Factory {
             Fishnet.init(this, PathManager.DIR_NATIVE_LOGS.absolutePath)
 
             MMKV.initialize(this)
-            loadAllSettings(this)
+            loadAllSettings()
 
             Logger.initialize(this)
 
@@ -146,7 +145,6 @@ class ZLApplication : Application(), SingletonImageLoader.Factory {
     }
 
     private fun initializeData() {
-        AccountsManager.initialize(this)
         GamePathManager.initialize(this)
     }
 }

@@ -23,7 +23,6 @@ import android.os.Bundle
 import androidx.annotation.CallSuper
 import com.movtery.zalithlauncher.BuildKeys
 import com.movtery.zalithlauncher.context.refreshContext
-import com.movtery.zalithlauncher.game.account.AccountsManager
 import com.movtery.zalithlauncher.game.path.GamePathManager
 import com.movtery.zalithlauncher.setting.loadAllSettings
 import com.movtery.zalithlauncher.utils.checkStoragePermissionsForInit
@@ -42,7 +41,7 @@ open class BaseAppCompatActivity : FullScreenAppCompatActivity() {
     @CallSuper
     override fun onResume() {
         super.onResume()
-        loadAllSettings(this, true)
+        loadAllSettings(true)
         checkStoragePermissions()
         refreshTaskDescription()
     }
@@ -59,8 +58,6 @@ open class BaseAppCompatActivity : FullScreenAppCompatActivity() {
     }
 
     protected fun refreshData() {
-        AccountsManager.reloadAccounts()
-        AccountsManager.reloadAuthServers()
         GamePathManager.reloadPath()
     }
 

@@ -23,7 +23,6 @@ import android.content.Intent
 import android.os.Bundle
 import android.os.Parcelable
 import androidx.activity.compose.setContent
-import androidx.activity.viewModels
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
@@ -35,7 +34,6 @@ import com.movtery.zalithlauncher.context.COPY_LABEL_LINK
 import com.movtery.zalithlauncher.path.PathManager
 import com.movtery.zalithlauncher.ui.base.BaseAppCompatActivity
 import com.movtery.zalithlauncher.ui.screens.main.ErrorScreen
-import com.movtery.zalithlauncher.ui.screens.main.crashlogs.ShareLinkOperation
 import com.movtery.zalithlauncher.ui.theme.ZalithLauncherTheme
 import com.movtery.zalithlauncher.ui.theme.backgroundColor
 import com.movtery.zalithlauncher.ui.theme.onBackgroundColor
@@ -43,49 +41,18 @@ import com.movtery.zalithlauncher.utils.copyText
 import com.movtery.zalithlauncher.utils.file.shareFile
 import com.movtery.zalithlauncher.utils.getParcelableSafely
 import com.movtery.zalithlauncher.utils.getSerializableSafely
-import com.movtery.zalithlauncher.utils.network.openLink
 import com.movtery.zalithlauncher.utils.string.throwableToString
-import com.movtery.zalithlauncher.viewmodel.LogsUploadViewModel
 import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.parcelize.Parcelize
 import java.io.File
 
 private const val BUNDLE_EXIT_TYPE = "BUNDLE_EXIT_TYPE"
 private const val BUNDLE_THROWABLE = "BUNDLE_THROWABLE"
-private const val BUNDLE_JVM_CRASH = "BUNDLE_JVM_CRASH"
 private const val BUNDLE_CAN_RESTART = "BUNDLE_CAN_RESTART"
-private const val EXIT_JVM = "EXIT_JVM"
 private const val EXIT_LAUNCHER = "EXIT_LAUNCHER"
-
-fun showExitMessage(
-    context: Context,
-    code: Int,
-    isSignal: Boolean,
-    logPath: String
-) {
-    val intent = Intent(context, ErrorActivity::class.java).apply {
-        addFlags(Intent.FLAG_ACTIVITY_CLEAR_TASK)
-        addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-        putExtra(BUNDLE_EXIT_TYPE, EXIT_JVM)
-        putExtra(BUNDLE_JVM_CRASH, JvmCrash(code, isSignal, logPath))
-    }
-    context.startActivity(intent)
-}
-
-@Parcelize
-private data class JvmCrash(
-    val code: Int,
-    val isSignal: Boolean,
-    val logPath: String
-): Parcelable
 
 @AndroidEntryPoint
 class ErrorActivity : BaseAppCompatActivity() {
-
-    /**
-     * 游戏崩溃日志上传逻辑管理 ViewModel
-     */
-    private val viewModel: LogsUploadViewModel by viewModels()
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -96,21 +63,6 @@ class ErrorActivity : BaseAppCompatActivity() {
         val exitType = extras.getString(BUNDLE_EXIT_TYPE, EXIT_LAUNCHER)
 
         val errorMessage = when (exitType) {
-            EXIT_JVM -> {
-                val jvmCrash = extras.getParcelableSafely(BUNDLE_JVM_CRASH, JvmCrash::class.java) ?: return runFinish()
-                val messageResId = if (jvmCrash.isSignal) R.string.crash_singnal_message else R.string.crash_exit_message
-                val message = getString(messageResId, jvmCrash.code)
-                val messageBody = getString(R.string.crash_exit_note)
-                ErrorMessage(
-                    message = message,
-                    messageBody = messageBody,
-                    crashType = CrashType.GAME_CRASH,
-                    logFile = File(jvmCrash.logPath).also { file ->
-                        //检查日志文件是否适合上传
-                        viewModel.check(file)
-                    }
-                )
-            }
             else -> {
                 val throwable = extras.getSerializableSafely(BUNDLE_THROWABLE, Throwable::class.java) ?: return runFinish()
                 val message = getString(R.string.crash_launcher_message)
@@ -130,18 +82,6 @@ class ErrorActivity : BaseAppCompatActivity() {
 
         setContent {
             ZalithLauncherTheme {
-                ShareLinkOperation(
-                    operation = viewModel.operation,
-                    onChange = { viewModel.operation = it },
-                    onUploadChancel = { viewModel.cancel() },
-                    onUpload = {
-                        viewModel.upload(logFile) { link ->
-                            openLink(link)
-                            copyText(COPY_LABEL_LINK, link, this@ErrorActivity)
-                        }
-                    }
-                )
-
                 Surface(
                     modifier = Modifier.fillMaxSize(),
                     color = backgroundColor(),
@@ -150,16 +90,14 @@ class ErrorActivity : BaseAppCompatActivity() {
                     ErrorScreen(
                         crashType = errorMessage.crashType,
                         shareLogs = logExists,
-                        canUpload = viewModel.canUpload,
+                        canUpload = false,
                         canRestart = canRestart,
                         onShareLogsClick = {
                             if (logExists) {
                                 shareFile(this@ErrorActivity, logFile)
                             }
                         },
-                        onUploadClick = {
-                            viewModel.operation = ShareLinkOperation.Tip
-                        },
+                        onUploadClick = {},
                         onRestartClick = {
                             ProcessPhoenix.triggerRebirth(this@ErrorActivity)
                         },

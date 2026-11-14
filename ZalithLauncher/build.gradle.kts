@@ -178,14 +178,16 @@ android {
 
     externalNativeBuild {
         ndkBuild {
-            path = file("src/main/jni/Android.mk")
+            // Horizon 外壳的原生组件（引擎转发桩 + java/javac 启动包装器），
+            // 旧的 Java 版启动 jni 已随 Java 版支持一并移除
+            path = file("src/main/jni-horizon/Android.mk")
         }
     }
 
     packaging {
         jniLibs {
             useLegacyPackaging = true
-            pickFirsts += listOf("**/libbytehook.so")
+            pickFirsts += listOf("**/libbytehook.so", "**/libc++_shared.so")
         }
     }
 
@@ -343,11 +345,8 @@ dependencies {
     implementation(libs.editor.language.textmate)
     coreLibraryDesugaring(libs.desugar.jdk.libs)
     //Project
-    implementation(project(":LayerController"))
     implementation(project(":ColorPicker"))
     implementation(project(":CardGrid"))
-    implementation(project(":Terracotta"))
-    implementation(project(":InputMap"))
     implementation(project(":Guide"))
     implementation(project(":PetLib"))
     //Utils
