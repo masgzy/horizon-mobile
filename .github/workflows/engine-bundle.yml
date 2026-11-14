@@ -23,6 +23,14 @@ on:
         description: Ship the libraries unstripped, for a profiler to name their functions
         type: boolean
         default: false
+      engine_ref:
+        description: Build a chosen upstream Horizon version (a tag/branch/commit of the engine repo below); empty keeps this branch's engine sources
+        type: string
+        default: ''
+      engine_repo:
+        description: Where engine_ref is fetched from (owner/repo)
+        type: string
+        default: starling-client/starling
 permissions:
   contents: read
 concurrency:
@@ -40,13 +48,24 @@ jobs:
           - { abi: x86_64, target: x86_64-linux-android }
     runs-on: ubuntu-latest
     timeout-minutes: 150
+    outputs:
+      engine_ref: ${{ inputs.engine_ref }}
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
+      - uses: actions/checkout@v7
+      # "选版本"的另一半：外壳的引擎管理页列出的是这里的 release；想上架某个 Horizon 版本，
+      # 就用 engine_ref 手动触发本工作流（从上游仓库取该版本的源码，保留本分支的打包层）。
+      - name: Swap in the chosen upstream Horizon sources (engine_ref)
+        if: ${{ inputs.engine_ref != '' }}
+        run: |
+          git fetch --depth=1 "https://github.com/${{ inputs.engine_repo }}.git" "${{ inputs.engine_ref }}"
+          # Swap the engine sources, keep this branch's packaging dir and workflows.
+          git checkout FETCH_HEAD -- . ':!packaging' ':!.github'
+          git log --oneline -1 FETCH_HEAD
+      - uses: actions/setup-python@v7
         with:
           python-version: '3.12'
       # JDK 25 compiles/link-checks the original exporters; the build-tools supply the NDK pins.
-      - uses: actions/setup-java@v4
+      - uses: actions/setup-java@v6
         with:
           distribution: temurin
           java-version: '25'
@@ -56,8 +75,11 @@ jobs:
             "build-tools;35.0.0" "platforms;android-36" "ndk;28.2.13676358" > /dev/null
       - name: Install Rust for Android and cargo-ndk
         run: |
+          # Every run installs whatever stable rustup points at that day: the engine is always
+          # built with the latest stable Rust from the official dist servers, never a pinned toolchain.
           rustup toolchain install stable --profile minimal --target ${{ matrix.target }}
           rustup default stable
+          rustc --version
           cargo install cargo-ndk --version 3.5.4 --locked
       - uses: Swatinem/rust-cache@v2
         with:
@@ -69,7 +91,7 @@ jobs:
           PROFILE: ${{ (startsWith(github.ref, 'refs/tags/') || inputs.publish) && 'fast' || 'quick' }}
           KEEP_SYMBOLS: ${{ inputs.keep_symbols && '--keep-symbols' || '' }}
         run: python packaging/android/build_engine_bundle.py --abi "$ABI" --profile "$PROFILE" $KEEP_SYMBOLS
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: engine-bundle-${{ matrix.abi }}
           path: |
@@ -84,7 +106,7 @@ jobs:
       contents: write
     steps:
       - name: Collect the bundles
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v8
         with:
           path: dist
           pattern: engine-bundle-*
@@ -106,13 +128,16 @@ jobs:
       - name: Publish the release
         env:
           GH_TOKEN: ${{ github.token }}
+          ENGINE_REF: ${{ needs.bundle.outputs.engine_ref }}
         run: |
           if [[ "$GITHUB_REF" == refs/tags/* ]]; then
             tag="${GITHUB_REF#refs/tags/}"; pre=""
+          elif [[ -n "$ENGINE_REF" ]]; then
+            tag="engine-${ENGINE_REF//\//-}-${GITHUB_RUN_NUMBER}"; pre="--prerelease"
           else
             tag="engine-manual-${GITHUB_RUN_NUMBER}"; pre="--prerelease"
           fi
           gh release create "$tag" dist/engine-*.zip dist/SHA256SUMS \
             --title "Horizon engine bundles $tag" \
-            --notes "Engine bundles for a launcher shell: one zip per ABI, each holding libhorizon_android.so, the java/javac launchers, prepare-kit.zip and a manifest (see packaging/android/build_engine_bundle.py). Verify with SHA256SUMS." \
+            --notes "Engine bundles for a launcher shell: one zip per ABI, each holding libhorizon_android.so, the java/javac launchers, prepare-kit.zip and a manifest (see packaging/android/build_engine_bundle.py). Verify with SHA256SUMS. Engine sources: ${ENGINE_REF:-this branch}." \
             $pre
