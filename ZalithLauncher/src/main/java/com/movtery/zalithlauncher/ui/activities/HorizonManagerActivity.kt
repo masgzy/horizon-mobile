@@ -37,6 +37,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import androidx.compose.runtime.LaunchedEffect
@@ -66,6 +67,7 @@ class HorizonManagerActivity : BaseAppCompatActivity() {
         var currentInfo by mutableStateOf("")
         var engines by mutableStateOf<List<String>>(emptyList())
         var latestAssetName by mutableStateOf<String?>(null)
+        var releases by mutableStateOf<List<EngineReleaseClient.Release>>(emptyList())
         var jreReady by mutableStateOf<Boolean?>(null)
     }
 
@@ -97,13 +99,19 @@ class HorizonManagerActivity : BaseAppCompatActivity() {
             state.jreReady = current?.let {
                 File(File(filesDir, "preparer/jre25"), ".starling-runtime").isFile
             }
-            state.latestAssetName = runCatching {
-                EngineReleaseClient.latestBundle(
-                    EngineReleaseClient.fetchReleases(cacheDir),
-                    EngineRepository.deviceAbi(),
-                    includePrerelease = true
-                )?.second?.name
-            }.fold(onSuccess = { it }, onFailure = { "获取失败 (${it.message})" })
+            // 发布列表拉一次，“最新包”提示与“选版本”共用
+            val releases = runCatching { EngineReleaseClient.fetchReleases(cacheDir) }
+            state.latestAssetName = releases.fold(
+                onSuccess = { list ->
+                    EngineReleaseClient.latestBundle(
+                        list,
+                        EngineRepository.deviceAbi(),
+                        includePrerelease = true
+                    )?.second?.name
+                },
+                onFailure = { "获取失败 (${it.message})" }
+            )
+            state.releases = releases.getOrDefault(emptyList())
             Unit
         }
 
@@ -231,6 +239,40 @@ class HorizonManagerActivity : BaseAppCompatActivity() {
                                         }
                                     }) { Text("删除") }
                                 }
+                            }
+                        }
+                    }
+                }
+            }
+
+            if (state.releases.isNotEmpty()) {
+                Card(Modifier.fillMaxWidth()) {
+                    Column(Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                        Text("从发布列表安装（选版本）", style = MaterialTheme.typography.titleSmall)
+                        val abi = EngineRepository.deviceAbi()
+                        state.releases.forEach { release ->
+                            val asset = EngineReleaseClient.bundleIn(release, abi) ?: return@forEach
+                            Row(
+                                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Text(
+                                    "${release.tagName}${if (release.prerelease) "（预发布）" else ""}",
+                                    modifier = Modifier.weight(1f),
+                                    style = MaterialTheme.typography.bodySmall
+                                )
+                                OutlinedButton(enabled = !state.busy, onClick = {
+                                    scope.launch(Dispatchers.Main) {
+                                        runStep(state, "安装 ${release.tagName}") {
+                                            EngineRepository.install(this@HorizonManagerActivity, asset) { p ->
+                                                state.progress = p.ratio
+                                                state.message = "安装引擎（${p.phase}）"
+                                            }
+                                            "已安装 ${release.tagName} 的引擎包"
+                                        }
+                                        refresh()
+                                    }
+                                }) { Text("安装") }
                             }
                         }
                     }

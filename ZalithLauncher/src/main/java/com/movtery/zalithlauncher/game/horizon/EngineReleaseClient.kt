@@ -86,6 +86,10 @@ object EngineReleaseClient {
         return null
     }
 
+    /** 指定 release 里本机 ABI 的引擎包资产；没有则返回 null（“选版本”安装用） */
+    fun bundleIn(release: Release, abi: String): Asset? =
+        release.assets.firstOrNull { it.name == EngineManifest.bundleName(release.tagName, abi) }
+
     /** release 资产的多源下载地址：镜像前缀优先，直连兜底 */
     fun assetUrls(asset: Asset): List<String> {
         val prefix = mirrorPrefix()
