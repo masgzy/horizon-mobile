@@ -22,7 +22,6 @@ import android.content.Context
 import androidx.room.Database
 import androidx.room.Room
 import androidx.room.RoomDatabase
-import androidx.room.TypeConverters
 import androidx.room.migration.Migration
 import androidx.sqlite.db.SupportSQLiteDatabase
 import com.movtery.zalithlauncher.game.path.GamePath
@@ -34,7 +33,6 @@ import com.movtery.zalithlauncher.game.path.GamePathDao
     version = 2,
     exportSchema = false //默认不支持导出
 )
-@TypeConverters(Converters::class)
 abstract class AppDatabase : RoomDatabase() {
     /**
      * 游戏目录
