@@ -1,0 +1,49 @@
+name: launcher-apk
+# 外壳 APK 的 CI 构建（ZL2 改版 Horizon 启动器）。外壳只做 Java/Kotlin 与 ndkBuild
+# （jni-horizon 转发桩 + java/javac 启动包装器），不需要 Rust：引擎本体由 engine-bundle
+# 工作流按 ABI 出包，外壳运行时下载安装。debug 签名用仓库内的 zalith_launcher_debug.jks
+# （模块 gradle.properties 内置默认口令）；release 需要额外密钥，不在 CI 出。
+on:
+  push:
+    branches: [horizon, launcher]
+  pull_request:
+    branches: [horizon, launcher]
+  workflow_dispatch:
+    inputs:
+      arch:
+        description: '只构建某一 ABI：arm / arm64 / x86 / x86_64；留空构建通用包'
+        type: string
+        default: ''
+permissions:
+  contents: read
+concurrency:
+  group: launcher-apk-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  apk:
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-java@v6
+        with:
+          distribution: temurin
+          java-version: '17'
+      # NDK 版本由 ZalithLauncher/build.gradle.kts 钉死（25.2.9519653）；
+      # platform / build-tools / cmake 由 AGP 按 runner 已接受的许可自动补装。
+      - name: Install the pinned NDK
+        run: |
+          yes | "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" --licenses > /dev/null || true
+          "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" --install "ndk;25.2.9519653" > /dev/null
+      - name: Build the debug APK
+        env:
+          ARCH: ${{ inputs.arch }}
+        run: |
+          ARGS=""
+          if [[ -n "$ARCH" ]]; then ARGS="-Darch=$ARCH"; fi
+          ./gradlew :ZalithLauncher:assembleDebug --stacktrace $ARGS
+      - uses: actions/upload-artifact@v7
+        with:
+          name: launcher-debug-apk
+          path: ZalithLauncher/build/outputs/apk/debug/*.apk
+          if-no-files-found: error
