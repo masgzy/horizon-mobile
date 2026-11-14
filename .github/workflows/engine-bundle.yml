@@ -1,0 +1,118 @@
+name: engine-bundle
+# Horizon engine bundles for a launcher shell that outlives many engine builds: each ABI builds
+# libhorizon_android.so and what prepares the game files (prepare-kit.zip, the java/javac launcher
+# programs the shell ships in its own APK), zips them with a manifest naming versions, pins and
+# checksums, and keeps the zip as an artifact. A shell downloads, verifies (SHA256SUMS) and
+# installs the bundle; nothing of Minecraft is packaged. The bundle and an APK of the same tree
+# are built alike: packaging/android/build_engine_bundle.py reuses build_apk.py's steps and pins.
+#
+# A tag v* or nightly-* publishes all four bundles to a release (with GITHUB_TOKEN, so a fork can
+# publish too); workflow_dispatch with "publish" does the same as a prerelease named after the
+# run. Otherwise the bundles stay artifacts of the run, to test a shell's updater against.
+on:
+  push:
+    branches: [starling, engine-bundle]
+    tags: ['v*', 'nightly-*']
+  workflow_dispatch:
+    inputs:
+      publish:
+        description: Publish the bundles as a prerelease (engine-manual-<run number>)
+        type: boolean
+        default: false
+      keep_symbols:
+        description: Ship the libraries unstripped, for a profiler to name their functions
+        type: boolean
+        default: false
+permissions:
+  contents: read
+concurrency:
+  group: engine-bundle-${{ github.ref }}
+  cancel-in-progress: false
+jobs:
+  bundle:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - { abi: arm64-v8a, target: aarch64-linux-android }
+          - { abi: armeabi-v7a, target: armv7-linux-androideabi }
+          - { abi: x86, target: i686-linux-android }
+          - { abi: x86_64, target: x86_64-linux-android }
+    runs-on: ubuntu-latest
+    timeout-minutes: 150
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      # JDK 25 compiles/link-checks the original exporters; the build-tools supply the NDK pins.
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '25'
+      - name: Install the build-tools, platform and NDK pins build_apk.py shares
+        run: |
+          yes | "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" --install \
+            "build-tools;35.0.0" "platforms;android-36" "ndk;28.2.13676358" > /dev/null
+      - name: Install Rust for Android and cargo-ndk
+        run: |
+          rustup toolchain install stable --profile minimal --target ${{ matrix.target }}
+          rustup default stable
+          cargo install cargo-ndk --version 3.5.4 --locked
+      - uses: Swatinem/rust-cache@v2
+        with:
+          shared-key: engine-bundle-${{ matrix.abi }}
+          save-if: ${{ github.ref == 'refs/heads/starling' || github.ref == 'refs/heads/engine-bundle' }}
+      - name: Build the engine bundle
+        env:
+          ABI: ${{ matrix.abi }}
+          PROFILE: ${{ (startsWith(github.ref, 'refs/tags/') || inputs.publish) && 'fast' || 'quick' }}
+          KEEP_SYMBOLS: ${{ inputs.keep_symbols && '--keep-symbols' || '' }}
+        run: python packaging/android/build_engine_bundle.py --abi "$ABI" --profile "$PROFILE" $KEEP_SYMBOLS
+      - uses: actions/upload-artifact@v4
+        with:
+          name: engine-bundle-${{ matrix.abi }}
+          path: |
+            target/android/engine-*.zip
+            target/android/libhorizon_android-*-symbols.so
+          if-no-files-found: error
+  publish:
+    needs: bundle
+    if: ${{ startsWith(github.ref, 'refs/tags/') || inputs.publish }}
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Collect the bundles
+        uses: actions/download-artifact@v4
+        with:
+          path: dist
+          pattern: engine-bundle-*
+          merge-multiple: true
+      - name: Checksum the bundles
+        working-directory: dist
+        run: |
+          sha256sum engine-*.zip | tee SHA256SUMS
+          # Verify every bundle's internal manifest against its own SHA256SUMS.
+          for zip in engine-*.zip; do
+            python3 - "$zip" <<'EOF'
+          import sys, zipfile, hashlib
+          with zipfile.ZipFile(sys.argv[1]) as z:
+              for line in z.read("SHA256SUMS").decode().splitlines():
+                  digest, name = line.split("  ", 1)
+                  assert digest == hashlib.sha256(z.read(name)).hexdigest(), f"{sys.argv[1]}: {name}"
+          EOF
+          done
+      - name: Publish the release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          if [[ "$GITHUB_REF" == refs/tags/* ]]; then
+            tag="${GITHUB_REF#refs/tags/}"; pre=""
+          else
+            tag="engine-manual-${GITHUB_RUN_NUMBER}"; pre="--prerelease"
+          fi
+          gh release create "$tag" dist/engine-*.zip dist/SHA256SUMS \
+            --title "Horizon engine bundles $tag" \
+            --notes "Engine bundles for a launcher shell: one zip per ABI, each holding libhorizon_android.so, the java/javac launchers, prepare-kit.zip and a manifest (see packaging/android/build_engine_bundle.py). Verify with SHA256SUMS." \
+            $pre
