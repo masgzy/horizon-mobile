@@ -1,9 +1,7 @@
 import com.android.build.api.variant.FilterConfiguration.FilterType.ABI
 import com.android.build.api.variant.impl.VariantOutputImpl
 import com.android.build.gradle.tasks.MergeSourceSetFolders
-import groovy.json.JsonOutput
 import org.jetbrains.kotlin.gradle.dsl.JvmTarget
-import java.security.MessageDigest
 
 plugins {
     alias(libs.plugins.android.application)
@@ -42,68 +40,8 @@ fun getKeyFromLocal(envKey: String, fileName: String? = null, default: String? =
     }
 }
 
-fun File.sha1Hex(): String {
-    val digest = MessageDigest.getInstance("SHA-1")
-    inputStream().use { stream ->
-        val buffer = ByteArray(8192)
-        while (true) {
-            val count = stream.read(buffer)
-            if (count < 0) break
-            digest.update(buffer, 0, count)
-        }
-    }
-    return digest.digest().joinToString("") { "%02x".format(it) }
-}
-
-fun writeAssetManifest(assetsDir: File, componentPath: String) {
-    val componentDir = File(assetsDir, componentPath)
-    require(componentDir.isDirectory) { "Missing component assets: $componentDir" }
-    val files = componentDir.walkTopDown()
-        .filter { it.isFile }
-        .map { it.relativeTo(componentDir) }
-        .filter { it.invariantSeparatorsPath != "version" && it.invariantSeparatorsPath != "manifest.json" }
-        .sortedBy { it.invariantSeparatorsPath }
-        .map { relativePath ->
-            val path = relativePath.invariantSeparatorsPath
-            val file = File(componentDir, path)
-            linkedMapOf(
-                "path" to path,
-                "size" to file.length(),
-                "sha1" to file.sha1Hex()
-            )
-        }
-        .toList()
-    require(files.isNotEmpty()) { "Component assets are empty: $componentDir" }
-
-    val manifest = linkedMapOf(
-        "formatVersion" to 1,
-        "component" to componentPath,
-        "algorithm" to "SHA-1",
-        "files" to files
-    )
-    File(componentDir, "manifest.json").writeText(
-        JsonOutput.prettyPrint(JsonOutput.toJson(manifest)) + "\n"
-    )
-}
-
-fun writeComponentAssetManifests(assetsDir: File) {
-    val componentPaths = mutableListOf(
-        "components/auth_libs",
-        "components/caciocavallo",
-        "components/caciocavallo17",
-        "components/launcher",
-        "runtimes/jna"
-    )
-    val lwjglRoot = File(assetsDir, "app_runtime/lwjgl")
-    require(lwjglRoot.isDirectory) { "Missing LWJGL assets: $lwjglRoot" }
-    lwjglRoot.listFiles()
-        ?.filter { it.isDirectory }
-        ?.sortedBy { it.name }
-        ?.forEach { componentPaths += "app_runtime/lwjgl/${it.name}" }
-    componentPaths.forEach {
-        writeAssetManifest(assetsDir, it)
-    }
-}
+// Java 版启动组件（components/*、app_runtime/lwjgl、runtimes/*）已随 Java 版支持移除，
+// 不再生成资产清单；下面的 doLast 只保留空安全的按架构清理逻辑。
 
 android {
     namespace = zalithPackageName
@@ -273,7 +211,6 @@ androidComponents {
                                 }
                             }
                         }
-                        writeComponentAssetManifests(assetsDir)
                     }
                 }
 
