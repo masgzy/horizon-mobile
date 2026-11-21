@@ -14,12 +14,16 @@
  */
 #include <dlfcn.h>
 #include <stddef.h>
+#include <stdlib.h>
 #include <android/log.h>
 #include <android/native_activity.h>
 
 #define TAG "horizon-stub"
 
 typedef void (*OnCreate)(ANativeActivity *activity, void *saved_state, size_t saved_state_size);
+
+/* Defined below; the comparison below needs the declaration in scope. */
+void starling_on_create(ANativeActivity *activity, void *saved_state, size_t saved_state_size);
 
 static void *find_engine_entry(void) {
     const char *path = getenv("HORIZON_ENGINE_LIBRARY");

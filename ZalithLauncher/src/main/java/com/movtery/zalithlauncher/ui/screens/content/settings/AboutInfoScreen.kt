@@ -251,8 +251,6 @@ fun AboutInfoScreen(
                     }
                 }
             }
-
-            }
         }
     }
 }

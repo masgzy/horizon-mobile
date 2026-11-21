@@ -85,8 +85,8 @@ class HorizonManagerActivity : BaseAppCompatActivity() {
     @Composable
     private fun HorizonManagerScreen() {
         val state = remember { UiState() }
-        var repo by remember { mutableStateOf(launcherMMKV().decodeString("horizon_release_repo", "")) }
-        var mirror by remember { mutableStateOf(launcherMMKV().decodeString("horizon_github_mirror", "")) }
+        var repo by remember { mutableStateOf(launcherMMKV().decodeString("horizon_release_repo", "").orEmpty()) }
+        var mirror by remember { mutableStateOf(launcherMMKV().decodeString("horizon_github_mirror", "").orEmpty()) }
         val scope = rememberCoroutineScope()
 
         suspend fun refresh() = withContextIo {
