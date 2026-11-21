@@ -20,7 +20,6 @@ package com.movtery.zalithlauncher.setting
 
 import androidx.compose.ui.geometry.Offset
 import com.movtery.zalithlauncher.setting.enums.FpsDisplayMode
-import com.movtery.zalithlauncher.ui.control.HotbarRule
 
 object GameUiSettings : SettingsRegistry() {
     /**
@@ -52,11 +51,6 @@ object GameUiSettings : SettingsRegistry() {
      * 游戏菜单悬浮窗不透明度
      */
     val menuBallOpacity = intSetting("menuBallOpacity", 100, 20..100)
-
-    /**
-     * 快捷栏判定箱计算规则
-     */
-    val hotbarRule = enumSetting("hotbarRule", HotbarRule.Auto)
 
     /**
      * 快捷栏宽度百分比

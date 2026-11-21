@@ -6,6 +6,10 @@
     <uses-feature
         android:name="android.hardware.type.pc"
         android:required="false" />
+    <uses-feature
+        android:name="android.hardware.vulkan.version"
+        android:version="0x400003"
+        android:required="false" />
 
     <uses-permission android:name="android.permission.INTERNET" />
     <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
@@ -70,11 +74,6 @@
              jni-horizon 的转发桩（horizon_stub），桩把入口交给下载安装的引擎库
              （game/horizon/EngineRepository）。Java 侧回调面来自 starling 的平台层
              （io.github.juanluci.starling，JNI 符号要求包名不变）。 -->
-
-        <uses-feature
-            android:name="android.hardware.vulkan.version"
-            android:version="0x400003"
-            android:required="false" />
 
         <activity
             android:name="io.github.juanluci.starling.GameActivity"

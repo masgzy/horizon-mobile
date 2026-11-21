@@ -177,11 +177,11 @@ class HorizonManagerActivity : BaseAppCompatActivity() {
                             runStep(state, "下载并准备原版资源") {
                                 val engine = HorizonDirs.current(this@HorizonManagerActivity)
                                     ?: error("没有已安装的引擎")
-                                ResourcePrefill.prefill(this@HorizonManagerActivity, engine) { p ->
+                                ResourcePrefill.prefill(this@HorizonManagerActivity, engine, onProgress = { p ->
                                     state.progress =
                                         if (p.filesTotal > 0) p.filesDone.toFloat() / p.filesTotal else 0f
                                     state.message = "准备资源：${p.stage}（${p.filesDone}/${p.filesTotal}）"
-                                }
+                                })
                                 ResourcePrefill.prefillJre(this@HorizonManagerActivity, engine)
                                 "资源已就绪（files/minecraft），首次进入游戏会快速校验并完成 prepare"
                             }
