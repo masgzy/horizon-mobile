@@ -86,7 +86,6 @@ import com.movtery.zalithlauncher.ui.components.fadeEdge
 import com.movtery.zalithlauncher.ui.components.swapAnimateAlphaProgressAsState
 import com.movtery.zalithlauncher.ui.components.swapAnimateProgressAsState
 import com.movtery.zalithlauncher.ui.components.verticalScrollWithBar
-import com.movtery.zalithlauncher.ui.screens.main.control_editor.InfoLayoutTextItem
 import com.movtery.zalithlauncher.utils.animation.SwapTimeline
 import com.movtery.zalithlauncher.viewmodel.SplashBackStackViewModel
 import kotlinx.coroutines.Dispatchers
