@@ -58,8 +58,8 @@ import com.movtery.zalithlauncher.ui.theme.festivals.FestivalTapObserver
 import com.movtery.zalithlauncher.upgrade.TooFrequentOperationException
 import com.movtery.zalithlauncher.upgrade.UpgradePrefs
 import com.movtery.zalithlauncher.utils.copyText
+import com.movtery.zalithlauncher.ui.toAndroidString
 import com.movtery.zalithlauncher.utils.festival.getTodayFestivals
-import com.movtery.zalithlauncher.ui.screens.content.elements.Background
 import com.movtery.zalithlauncher.ui.theme.showThemed
 import com.movtery.zalithlauncher.utils.compareLangTag
 import com.movtery.zalithlauncher.utils.isChinese
@@ -231,11 +231,6 @@ class MainActivity : BaseAppCompatActivity() {
                     guides.mainScreen,
                     nextTip = { NextTipLabel(it) }
                 ) {
-                    Background(
-                        modifier = Modifier.fillMaxSize(),
-                        viewModel = backgroundViewModel
-                    )
-
                     MainScreen(
                         screenBackStackModel = screenBackStackModel,
                         eventViewModel = eventViewModel,

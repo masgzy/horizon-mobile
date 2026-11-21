@@ -30,11 +30,12 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.material3.Text
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.TextStyle
-import com.movtery.zalithlauncher.ui.screens.content.versions.elements.MinecraftColorText
 import com.movtery.zalithlauncher.utils.festival.Festival
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.isActive
@@ -76,13 +77,14 @@ fun FestivalTitleText(
     }
 
     val text = stringResource(festival.textRes)
-    MinecraftColorText(
+    Text(
+        text = text,
         modifier = modifier.graphicsLayer {
             scaleX = scale
             scaleY = scale
         },
-        inputText = "§e$text",
         maxLines = maxLines,
         style = style,
+        color = Color(0xFFFFC107)
     )
 }

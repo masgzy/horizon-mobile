@@ -49,6 +49,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Checkbox
 import androidx.compose.material3.LocalTextStyle
+import androidx.compose.foundation.clickable
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
@@ -707,10 +708,12 @@ private fun WelcomeIntroduction(
                         )
 
                         documents.forEach { document ->
-                            InfoLayoutTextItem(
-                                modifier = Modifier.fillMaxWidth(),
-                                onClick = { selectedDocument = document },
-                                title = document.title,
+                            Text(
+                                text = document.title,
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .clickable { selectedDocument = document },
+                                color = MaterialTheme.colorScheme.primary
                             )
                         }
                     }

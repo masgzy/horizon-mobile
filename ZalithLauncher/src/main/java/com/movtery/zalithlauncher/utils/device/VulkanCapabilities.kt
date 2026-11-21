@@ -85,21 +85,6 @@ object VulkanChecker {
             )?.also { caps ->
                 Logger.info(TAG, "Vulkan version: ${caps.versionString}")
                 Logger.info(TAG, "Version >= 1.2: ${caps.isVersionSupported}")
-                caps.profileSupport().forEach { profile ->
-                    Logger.info(
-                        TAG,
-                        "Minecraft ${profile.versionRangeText} Vulkan supported: ${profile.supported}"
-                    )
-                    if (!profile.supported) {
-                        val support = caps.supportFor(profile.since)
-                        val missing = (support.missingRequired + support.missingOptional)
-                            .joinToString { it.dependency.name }
-                        Logger.warning(
-                            TAG,
-                            "Minecraft ${profile.versionRangeText} missing: $missing"
-                        )
-                    }
-                }
             }
         } catch (e: UnsatisfiedLinkError) {
             Logger.error(TAG, "Native library or method not found", e)
